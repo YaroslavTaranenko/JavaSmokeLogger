@@ -1,131 +1,216 @@
 package yar.pets.smoke_logger;
 
+import java.awt.*;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.Scanner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.swing.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
+import javax.swing.text.Document;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.io.FileWriter;
 
-
 public class SmokeLogger {
-    private static String _fileName = "log.txt";
-    private static File _logFile;
-    private static int _lastCounterValue = 0;
 
     public static void main(String[] args){
-        loadFile();
-
-        Scanner scanner = new Scanner(System.in);
-
-        while (true) {
-            System.out.print("> ");
-            String command = scanner.nextLine().trim();
-
-            if (command.isEmpty()) {
-                incrementCounter();
-            } else if (command.equalsIgnoreCase("back")) {
-                decrementCounter();
-            } else if (command.equalsIgnoreCase("reset")) {
-                resetCounter();
-            } else if (command.equalsIgnoreCase("exit")){
-                exit();
-            } else {
-                System.out.println("Неверная команда. Используйте пустую строку, 'back' или 'reset'.");
-            }
-        }
+        new LoggerWindow();
+//        loadFile();
+//
+//        Scanner scanner = new Scanner(System.in);
+//
+//        while (true) {
+//            System.out.print("> ");
+//            String command = scanner.nextLine().trim();
+//
+//            if (command.isEmpty()) {
+//                incrementCounter();
+//            } else if (command.equalsIgnoreCase("back")) {
+//                decrementCounter();
+//            } else if (command.equalsIgnoreCase("reset")) {
+//                resetCounter();
+//            } else if (command.equalsIgnoreCase("exit")){
+//                exit();
+//            } else {
+//                System.out.println("Неверная команда. Используйте пустую строку, 'back' или 'reset'.");
+//            }
+//        }
     }
 
-    private static void decrementCounter() {
-        _lastCounterValue--;
-        logAction("decrease");
-    }
+    public static class LoggerWindow extends JFrame {
+        private JTextArea logArea;
+        private int _lastCounterValue;
+        private final String _fileName = "log.txt";
 
-    private static void incrementCounter() {
-        _lastCounterValue++;
-        logAction("increase");
-    }
+        public LoggerWindow() throws HeadlessException{
 
-    private static void resetCounter() {
-        _lastCounterValue = 0;
+            setSize(400, 700);
+            setDefaultCloseOperation(EXIT_ON_CLOSE);
+            setLocationRelativeTo(null);
+            setTitle("Smoke logger");
 
-        try {
-            File file = new File(_fileName);
-            if (file.exists()) {
-                if(file.delete()) {
-                    System.out.println("New day started.");
-                }else{
-                    System.out.println("File '" + _fileName + "' was not deleted.");
+            logArea = new JTextArea();
+            Document doc = logArea.getDocument();
+            doc.addDocumentListener(new DocumentListener() {
+                @Override
+                public void insertUpdate(DocumentEvent e) {
+                    scrollToBottom();
                 }
+
+                @Override
+                public void removeUpdate(DocumentEvent e) {
+                    scrollToBottom();
+                }
+
+                @Override
+                public void changedUpdate(DocumentEvent e) {
+                    scrollToBottom();
+                }
+                private void scrollToBottom(){
+                    SwingUtilities.invokeLater(() -> logArea.setCaretPosition(logArea.getDocument().getLength()));
+                }
+            });
+            JScrollPane scrollPane = new JScrollPane(logArea);
+
+
+            JPanel actionPanel = new JPanel();
+            actionPanel.setLayout(new BoxLayout(actionPanel, BoxLayout.Y_AXIS));
+            actionPanel.setSize(new Dimension(155, 700));
+
+            Dimension btnSize = new Dimension(140, 35);
+
+            JButton btnNext = new JButton("+");
+            btnNext.setSize(btnSize);
+            btnNext.addActionListener(e -> this.incrementCounter());
+            JButton btnPrev = new JButton("-");
+            btnPrev.setSize(btnSize);
+            btnPrev.addActionListener(e -> this.decrementCounter());
+            JButton btnReset = new JButton("Reset");
+            btnReset.setSize(btnSize);
+            btnReset.addActionListener(e -> this.resetCounter());
+
+            // Set the dark theme colors
+            Color darkBackground = new Color(30, 30, 30); // Dark gray background
+            Color lightText = new Color(200, 200, 200); // Light gray text
+            Color accentColor = new Color(0, 150, 255); // Blue accent color
+
+            // Set the background color of the logArea
+            logArea.setBackground(darkBackground);
+            logArea.setForeground(lightText);
+
+            // Set the background color of the actionPanel
+            actionPanel.setBackground(darkBackground);
+
+            // Set the foreground color for the buttons (optional)
+            btnNext.setForeground(accentColor);
+            btnPrev.setForeground(accentColor);
+            btnReset.setForeground(accentColor);
+            btnNext.setBackground(darkBackground);
+            btnPrev.setBackground(darkBackground);
+            btnReset.setBackground(darkBackground);
+
+            actionPanel.add(btnNext);
+            actionPanel.add(Box.createRigidArea(new Dimension(0, 10)));
+            actionPanel.add(btnPrev);
+            actionPanel.add(Box.createRigidArea(new Dimension(0, 100)));
+            actionPanel.add(btnReset);
+
+            add(scrollPane, BorderLayout.CENTER);
+            add(actionPanel, BorderLayout.EAST);
+
+            this.loadFile();
+
+            setVisible(true);
+        }
+
+        private void decrementCounter() {
+            _lastCounterValue--;
+            logAction("decrease");
+        }
+
+        private void incrementCounter() {
+            _lastCounterValue++;
+            logAction("increase");
+        }
+
+        private void resetCounter() {
+            _lastCounterValue = 0;
+
+            try {
+                File file = new File(_fileName);
+                if (file.exists()) {
+                    if(file.delete()) {
+                        this.logArea.setText("");
+                        this.append("New day started.");
+                    }else{
+                        this.append("File '" + _fileName + "' was not deleted.");
+                    }
+                }
+            } catch (SecurityException e) {
+                Logger logger = LoggerFactory.getLogger(SmokeLogger.class);
+                logger.error("Error deleting: ", e);
             }
-        } catch (SecurityException e) {
-            Logger logger = LoggerFactory.getLogger(SmokeLogger.class);
-            logger.error("Error deleting: ", e);
         }
-    }
 
-    private static void logAction(String action) {
-        LocalDateTime now = LocalDateTime.now();
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
-        String formattedDateTime = now.format(formatter);
+        private void logAction(String action) {
+            LocalDateTime now = LocalDateTime.now();
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+            String formattedDateTime = now.format(formatter);
 
-        try (FileWriter fileWriter = new FileWriter(_fileName, true)) {
-            String newLine = formattedDateTime + " - " + _lastCounterValue + "\n";
-            fileWriter.write(newLine);
-            System.out.print(newLine);
-        } catch (IOException e) {
-            Logger logger = LoggerFactory.getLogger(SmokeLogger.class);
-            logger.error("Error writing to file: ", e);
+            try (FileWriter fileWriter = new FileWriter(_fileName, true)) {
+                String newLine = formattedDateTime + " - " + _lastCounterValue;
+                fileWriter.write(newLine + "\n");
+                this.append(newLine);
+            } catch (IOException e) {
+                Logger logger = LoggerFactory.getLogger(SmokeLogger.class);
+                logger.error("Error writing to file: ", e);
+            }
         }
-    }
 
-    private static void loadFile(){
-        _logFile = new File(_fileName);
-        try{
-            if(_logFile.createNewFile()){
-                System.out.println("New day started.");
-            }else{
-                // Загружаем данные из файла
-                try(BufferedReader reader = new BufferedReader(new FileReader(_logFile))){
-                    String line;
-                    String lastLine = ""; // Переменная для хранения последней строки
-                    while((line = reader.readLine()) != null){
-                        // Обрабатываем каждую строку из файла
-                        lastLine = line;
-                        // Извлекаем значение счетчика из строки
-                        String[] parts = line.split(" - ");
-                        if (parts.length == 2) {
-                            try {
-                                _lastCounterValue = Integer.parseInt(parts[1]);
-                            } catch (NumberFormatException e) {
-                                Logger logger = LoggerFactory.getLogger(SmokeLogger.class);
-                                logger.error("Invalid counter value in the file.", e);
+        private void loadFile(){
+            File _logFile = new File(_fileName);
+            try{
+                if(_logFile.createNewFile()){
+                    this.append("New day started.");
+                }else{
+                    // Загружаем данные из файла
+                    try(BufferedReader reader = new BufferedReader(new FileReader(_logFile))){
+                        String line;
+                        String lastLine = ""; // Переменная для хранения последней строки
+                        while((line = reader.readLine()) != null){
+                            // Обрабатываем каждую строку из файла
+                            lastLine = line;
+                            // Извлекаем значение счетчика из строки
+                            String[] parts = line.split(" - ");
+                            if (parts.length == 2) {
+                                try {
+                                    _lastCounterValue = Integer.parseInt(parts[1]);
+                                } catch (NumberFormatException e) {
+                                    Logger logger = LoggerFactory.getLogger(SmokeLogger.class);
+                                    logger.error("Invalid counter value in the file.", e);
+                                }
+                                // Выводим последнюю строку
+                                this.append(lastLine);
                             }
                         }
-                        System.out.println(lastLine); // Выводим последнюю строку
+                    } catch(IOException e) {
+                        Logger logger = LoggerFactory.getLogger(SmokeLogger.class);
+                        logger.error("An error occurred while reading the file.", e);
                     }
-                } catch(IOException e) {
-                    Logger logger = LoggerFactory.getLogger(SmokeLogger.class);
-                    logger.error("An error occurred while reading the file.", e);
                 }
+            }catch(IOException e){
+                Logger logger = LoggerFactory.getLogger(SmokeLogger.class);
+                logger.error("An error occurred while loading the file.", e);
             }
-        }catch(IOException e){
-            Logger logger = LoggerFactory.getLogger(SmokeLogger.class);
-            logger.error("An error occurred while loading the file.", e);
+        }
+
+        private void append(String str) {
+            this.logArea.append(str + "\n");
         }
     }
-
-    public static void exit() {
-        // You might want to add additional cleanup logic here, such as:
-        // - Closing any open resources (file handles, network connections, etc.)
-        // - Performing any other necessary cleanup tasks
-
-        // Terminate the application
-        System.exit(0);
-    }
-
 }
