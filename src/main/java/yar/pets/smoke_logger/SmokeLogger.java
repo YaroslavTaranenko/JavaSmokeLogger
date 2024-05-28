@@ -20,30 +20,10 @@ public class SmokeLogger {
 
     public static void main(String[] args){
         new LoggerWindow();
-//        loadFile();
-//
-//        Scanner scanner = new Scanner(System.in);
-//
-//        while (true) {
-//            System.out.print("> ");
-//            String command = scanner.nextLine().trim();
-//
-//            if (command.isEmpty()) {
-//                incrementCounter();
-//            } else if (command.equalsIgnoreCase("back")) {
-//                decrementCounter();
-//            } else if (command.equalsIgnoreCase("reset")) {
-//                resetCounter();
-//            } else if (command.equalsIgnoreCase("exit")){
-//                exit();
-//            } else {
-//                System.out.println("Неверная команда. Используйте пустую строку, 'back' или 'reset'.");
-//            }
-//        }
     }
 
     public static class LoggerWindow extends JFrame {
-        private JTextArea logArea;
+        private final JTextArea logArea;
         private int _lastCounterValue;
         private final String _fileName = "log.txt";
 
@@ -79,7 +59,7 @@ public class SmokeLogger {
 
 
             JPanel actionPanel = new JPanel();
-            actionPanel.setLayout(new BoxLayout(actionPanel, BoxLayout.Y_AXIS));
+            actionPanel.setLayout(new BoxLayout(actionPanel, BoxLayout.X_AXIS));
             actionPanel.setSize(new Dimension(155, 700));
 
             Dimension btnSize = new Dimension(140, 35);
@@ -115,13 +95,13 @@ public class SmokeLogger {
             btnReset.setBackground(darkBackground);
 
             actionPanel.add(btnNext);
-            actionPanel.add(Box.createRigidArea(new Dimension(0, 10)));
+            actionPanel.add(Box.createRigidArea(new Dimension(10, 10)));
             actionPanel.add(btnPrev);
-            actionPanel.add(Box.createRigidArea(new Dimension(0, 100)));
+            actionPanel.add(Box.createHorizontalGlue());
             actionPanel.add(btnReset);
 
             add(scrollPane, BorderLayout.CENTER);
-            add(actionPanel, BorderLayout.EAST);
+            add(actionPanel, BorderLayout.NORTH);
 
             this.loadFile();
 
@@ -130,12 +110,12 @@ public class SmokeLogger {
 
         private void decrementCounter() {
             _lastCounterValue--;
-            logAction("decrease");
+            logAction();
         }
 
         private void incrementCounter() {
             _lastCounterValue++;
-            logAction("increase");
+            logAction();
         }
 
         private void resetCounter() {
@@ -157,7 +137,7 @@ public class SmokeLogger {
             }
         }
 
-        private void logAction(String action) {
+        private void logAction() {
             LocalDateTime now = LocalDateTime.now();
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
             String formattedDateTime = now.format(formatter);
@@ -181,7 +161,7 @@ public class SmokeLogger {
                     // Загружаем данные из файла
                     try(BufferedReader reader = new BufferedReader(new FileReader(_logFile))){
                         String line;
-                        String lastLine = ""; // Переменная для хранения последней строки
+                        String lastLine; // Переменная для хранения последней строки
                         while((line = reader.readLine()) != null){
                             // Обрабатываем каждую строку из файла
                             lastLine = line;
