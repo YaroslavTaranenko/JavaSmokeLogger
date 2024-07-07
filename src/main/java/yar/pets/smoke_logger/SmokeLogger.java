@@ -5,6 +5,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,6 +18,8 @@ import java.time.format.DateTimeFormatter;
 import java.io.FileWriter;
 
 public class SmokeLogger {
+
+    private static final Logger logger = LoggerFactory.getLogger(SmokeLogger.class);
 
     public static void main(String[] args){
         new LoggerWindow();
@@ -132,7 +135,6 @@ public class SmokeLogger {
                     }
                 }
             } catch (SecurityException e) {
-                Logger logger = LoggerFactory.getLogger(SmokeLogger.class);
                 logger.error("Error deleting: ", e);
             }
         }
@@ -147,7 +149,6 @@ public class SmokeLogger {
                 fileWriter.write(newLine + "\n");
                 this.append(newLine);
             } catch (IOException e) {
-                Logger logger = LoggerFactory.getLogger(SmokeLogger.class);
                 logger.error("Error writing to file: ", e);
             }
         }
@@ -171,7 +172,6 @@ public class SmokeLogger {
                                 try {
                                     _lastCounterValue = Integer.parseInt(parts[1]);
                                 } catch (NumberFormatException e) {
-                                    Logger logger = LoggerFactory.getLogger(SmokeLogger.class);
                                     logger.error("Invalid counter value in the file.", e);
                                 }
                                 // Выводим последнюю строку
@@ -179,12 +179,10 @@ public class SmokeLogger {
                             }
                         }
                     } catch(IOException e) {
-                        Logger logger = LoggerFactory.getLogger(SmokeLogger.class);
                         logger.error("An error occurred while reading the file.", e);
                     }
                 }
             }catch(IOException e){
-                Logger logger = LoggerFactory.getLogger(SmokeLogger.class);
                 logger.error("An error occurred while loading the file.", e);
             }
         }
