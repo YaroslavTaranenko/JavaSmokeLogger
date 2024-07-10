@@ -1,112 +1,129 @@
 package yar.pets.smoke_logger;
 
-import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.*;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
+import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.List;
 
 public class SmokeLoggerDomain {
     private static final Logger logger = LoggerFactory.getLogger(SmokeLogger.class);
     private int _lastCounterValue;
-    private final String _fileName = "log.txt";
-
-    public ArrayList<String> Inits;
+    private int _currentDay;
+    private int _totalRecordsCount;
+    private SQLiteDatabaseHelper dbHelper;
+    private List<LogEntry> records;
+    private List<DayEntry> days;
 
     public SmokeLoggerDomain(){
         System.out.println("SmokeLoggerDomain: Constructor called");
-        this.Inits = loadFile();
+        try {
+            dbHelper = SQLiteDatabaseHelper.getInstance();
+            days = dbHelper.getDays();
+            if(days.isEmpty()){
+                reset();
+                days = dbHelper.getDays();
+                records = dbHelper.getLogEntries();
+            }
+            _currentDay = days.size() - 1;
+            records = dbHelper.getLogEntriesByDay(days.get(_currentDay));
+            if(!records.isEmpty()) {
+                _lastCounterValue = records.get(records.size() - 1).getValue();
+            }else {
+                records = new ArrayList<>();
+                _lastCounterValue = 0;
+            }
+            _totalRecordsCount = dbHelper.GetTotalRecords();
+        } catch(SQLException e) {
+            logger.error(e.getMessage());
+        }
+
         System.out.println("SmokeLoggerDomain: Constructor finished");
     }
 
-    public String increase(){
-        return this.logAction(++this._lastCounterValue);
-    }
-
-    public String decrease(){
-        return this.logAction(--this._lastCounterValue);
-    }
-
-    @org.jetbrains.annotations.NotNull
-    private String logAction(int value) {
-        LocalDateTime now = LocalDateTime.now();
-        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
-        String logEntry = dtf.format(now) + " - " + value;
-        writeToFile(logEntry);
-        return logEntry;
-    }
-
-    public String resetLog() {
-        this._lastCounterValue = 0;
-
+    public void increase(){
         try {
-            File file = new File(this._fileName);
-            if (file.exists()) {
-                if(file.delete()) {
-                    return "New day started.";
-                }else{
-                    logger.error("File '" + _fileName + "' was not deleted.");
-                    return "IO error.";
-                }
-            }else{
-                return "New day started.";
-            }
-        } catch (SecurityException e) {
-            logger.error("Error deleting: ", e);
-            return "IO deleting file.";
+            LogEntry res = dbHelper.insertLogEntry(++this._lastCounterValue);
+            records.add(res);
+            _totalRecordsCount = dbHelper.GetTotalRecords();
+        }catch(SQLException e){
+            logger.error("Insert entry error: " + e);
         }
     }
 
-    private void writeToFile(String logEntry) {
-        try (FileWriter writer = new FileWriter(_fileName, true)) {
-            writer.write(logEntry + "\n");
-        } catch (IOException e) {
-            logger.error("An error occurred while writing to the file.", e);
+    public void deleteEntry(@NotNull LogEntry entry){
+        try{
+            dbHelper.deleteLogEntry(entry.getId());
+            records.remove(entry);
+            _lastCounterValue = records.isEmpty() ? 0 : records.get(records.size()-1).getValue();
+            _totalRecordsCount = dbHelper.GetTotalRecords();
+        } catch (SQLException e) {
+            e.getStackTrace();
         }
     }
 
-    private @Nullable ArrayList<String> loadFile() {
-        System.out.println("SmokeLoggerDomain: loadFile called");
-        File _logFile = new File(_fileName);
-        try {
-            ArrayList<String> inits = new ArrayList<>();
-            if (_logFile.createNewFile()) {
-                System.out.println("SmokeLoggerDomain: New log file created");
-                this.writeToFile("New day started.");
-                inits.add("New day started.");
-            } else {
-                System.out.println("SmokeLoggerDomain: Loading existing log file");
-                // Load data from file
-                try (BufferedReader reader = new BufferedReader(new FileReader(_logFile))) {
-
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        System.out.println("SmokeLoggerDomain: Reading line - " + line);
-                        // Extract counter value from line
-                        String[] parts = line.split(" - ");
-                        if (parts.length == 2) {
-                            try {
-                                _lastCounterValue = Integer.parseInt(parts[1]);
-                                System.out.println("SmokeLoggerDomain: Last counter value - " + _lastCounterValue);
-                            } catch (NumberFormatException e) {
-                                logger.error("Invalid counter value in the file.", e);
-                            }
-                        }
-                        inits.add(line);
-                    }
-
-                } catch (IOException e) {
-                    logger.error("An error occurred while reading the file.", e);
-                }
-            }
-            return inits;
-        } catch (IOException e) {
-            logger.error("An error occurred while loading the file.", e);
+    public LogEntry updateEntry(@NotNull LogEntry entry){
+        try{
+            LogEntry updEntry = dbHelper.updateLogEntry(entry.getId());
+            entry.setTimestamp(updEntry.getTimestamp());
+            return updEntry;
+        } catch (SQLException e){
+            e.getStackTrace();
         }
-        System.out.println("SmokeLoggerDomain: loadFile finished");
         return null;
+    }
+
+    public void previousDay() {
+        try {
+            if (_currentDay > 0) {
+                _currentDay--;
+                records = dbHelper.getLogEntriesByDay(days.get(_currentDay));
+            }
+        }catch (SQLException e){
+            e.getStackTrace();
+        }
+    }
+
+    public void nextDay(){
+        try {
+            if (_currentDay >= 0 && _currentDay < days.size() - 1) {
+                _currentDay++;
+                records = dbHelper.getLogEntriesByDay(days.get(_currentDay));
+            }
+        }catch (SQLException e){
+            e.getStackTrace();
+        }
+    }
+
+    public void reset() {
+        this._lastCounterValue = 0;
+        try {
+            DayEntry newDay = dbHelper.ResetDay();
+            days.add(newDay);
+            _currentDay = days.size() - 1;
+            records = dbHelper.getLogEntriesByDay(newDay);
+        } catch (SQLException e) {
+            logger.error("Error resetting: ", e);
+        }
+    }
+
+    public List<LogEntry> getRecords(){
+        return this.records;
+    }
+    public List<DayEntry> getDays(){
+        return days;
+    }
+
+    public int getCurrentDay(){
+        return this._currentDay;
+    }
+    public void setCurrentDay(int value){
+        this._currentDay = value;
+    }
+
+    public int getTotalEntitiesCount(){
+        return this._totalRecordsCount;
     }
 }
