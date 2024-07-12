@@ -4,6 +4,7 @@ import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import java.awt.*;
+import java.util.Objects;
 import javax.swing.SwingUtilities;
 import javax.swing.border.BevelBorder;
 import javax.swing.border.EmptyBorder;
@@ -11,11 +12,20 @@ import javax.swing.border.SoftBevelBorder;
 
 public class LoggerWindow extends JFrame {
     private final SmokeLoggerDomain smokeLoggerDomain;
-    private final JPanel recordsPanel;
-    private final JButton btnPrevDay;
-    private final JButton btnNextDay;
-    private final JLabel lblDay;
-    private final JLabel lblTotalEntries;
+    private JPanel recordsPanel;
+    private JButton btnPrevDay;
+    private JButton btnNextDay;
+    private JLabel lblDay;
+    private JLabel lblTotalEntries;
+    private JPanel topPanel;
+    private JPanel leftPanel;
+    private JPanel rightPanel;
+    private JMenuBar menuBar;
+    private JMenu menu;
+    private JMenuItem menuItemReset;
+    private JButton btnAdd;
+    private JScrollPane scrollPane;
+    private JPanel bottomPanel;
 
     public LoggerWindow() throws HeadlessException {
 
@@ -28,51 +38,17 @@ public class LoggerWindow extends JFrame {
         setLocationRelativeTo(null);
         setTitle("Smoke logger");
 
-        JPanel topPanel = new JPanel();
-        topPanel.setLayout(new BorderLayout());
+        initializeComponents();
 
-        JPanel leftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-
-        JMenuBar menuBar = new JMenuBar();
-        JMenu menu = new JMenu("Меню");
-        JMenuItem menuItemReset = new JMenuItem("Сброс");
-
-        JButton btnAdd = new JButton(" + ");
-        btnPrevDay = new JButton(" < ");
-        btnNextDay = new JButton(" > ");
-
-        navigationEnabling();
-
-        lblDay = new JLabel("dayText"); // Обновляем currentDay по мере изменения
-        dayLabelChange();
-
-        leftPanel.add(btnAdd);
-        rightPanel.add(btnPrevDay);
-        rightPanel.add(lblDay);
-        rightPanel.add(btnNextDay);
-
-        topPanel.add(leftPanel, BorderLayout.WEST);
-        topPanel.add(rightPanel, BorderLayout.EAST);
-
-        menu.add(menuItemReset);
-        menuBar.add(menu);
-        setJMenuBar(menuBar);
-        add(topPanel, BorderLayout.NORTH);
-
-        recordsPanel = new JPanel();
-        recordsPanel.setLayout(new BoxLayout(recordsPanel, BoxLayout.Y_AXIS));
         drawEntries();
 
+        assignListeners();
 
-        JScrollPane scrollPane = new JScrollPane(recordsPanel);
-        add(scrollPane, BorderLayout.CENTER);
+        totalLabelChange();
+        setVisible(true);
+    }
 
-        JPanel bottomPanel = new JPanel();
-        bottomPanel.setBorder(new EmptyBorder(0, 10, 0, 0));
-
-        lblTotalEntries = new JLabel("total entries");
-
+    private void assignListeners(){
         bottomPanel.add(lblTotalEntries);
         add(bottomPanel, BorderLayout.SOUTH);
 
@@ -102,12 +78,56 @@ public class LoggerWindow extends JFrame {
             nextDay();
             navigationEnabling();
         });
-        totalLabelChange();
-        setVisible(true);
+    }
+
+    private void initializeComponents(){
+        topPanel = new JPanel();
+        topPanel.setLayout(new BorderLayout());
+
+        leftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+
+        menuBar = new JMenuBar();
+        menu = new JMenu("Меню");
+        menuItemReset = new JMenuItem("Сброс");
+
+        btnAdd = new JButton(" + ");
+        btnPrevDay = new JButton(" < ");
+        btnNextDay = new JButton(" > ");
+
+        navigationEnabling();
+
+        lblDay = new JLabel("dayText"); // Обновляем currentDay по мере изменения
+        dayLabelChange();
+
+        leftPanel.add(btnAdd);
+        rightPanel.add(btnPrevDay);
+        rightPanel.add(lblDay);
+        rightPanel.add(btnNextDay);
+
+        topPanel.add(leftPanel, BorderLayout.WEST);
+        topPanel.add(rightPanel, BorderLayout.EAST);
+
+        menu.add(menuItemReset);
+        menuBar.add(menu);
+        setJMenuBar(menuBar);
+        add(topPanel, BorderLayout.NORTH);
+
+        recordsPanel = new JPanel();
+        recordsPanel.setLayout(new BoxLayout(recordsPanel, BoxLayout.Y_AXIS));
+
+        scrollPane = new JScrollPane(recordsPanel);
+        add(scrollPane, BorderLayout.CENTER);
+
+        bottomPanel = new JPanel();
+        bottomPanel.setBorder(new EmptyBorder(0, 10, 0, 0));
+
+        lblTotalEntries = new JLabel("total entries");
     }
 
     private void navigationEnabling(){
         btnPrevDay.setEnabled(smokeLoggerDomain.getCurrentDay() > 0);
+        System.out.println("Days size: " + smokeLoggerDomain.getDays().size());
         btnNextDay.setEnabled(smokeLoggerDomain.getCurrentDay() < smokeLoggerDomain.getDays().size() -1);
     }
 
@@ -133,7 +153,11 @@ public class LoggerWindow extends JFrame {
 
     private void drawEntries(){
         recordsPanel.removeAll();
-        if(smokeLoggerDomain.getRecords() == null) return;
+        if(smokeLoggerDomain.getRecords() == null) {
+            recordsPanel.revalidate();
+            recordsPanel.repaint();
+            return;
+        }
 
         for (LogEntry entry : smokeLoggerDomain.getRecords()) {
             recordsPanel.add(logEntryElement(entry));

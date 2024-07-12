@@ -206,7 +206,8 @@ public class SQLiteDatabaseHelper {
 
         if(rs.next()){
             int id = rs.getInt("id");
-            return getDayById(id);
+            DayEntry d = getDayById(id);
+            return d;
         }else{
             return null;
         }

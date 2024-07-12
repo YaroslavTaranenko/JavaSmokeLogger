@@ -22,7 +22,8 @@ public class SmokeLoggerDomain {
         try {
             dbHelper = SQLiteDatabaseHelper.getInstance();
             days = dbHelper.getDays();
-            if(days.isEmpty()){
+            records = new ArrayList<>();
+            if(days == null || days.isEmpty()){
                 reset();
                 days = dbHelper.getDays();
                 records = dbHelper.getLogEntries();
@@ -79,7 +80,8 @@ public class SmokeLoggerDomain {
         try {
             if (_currentDay > 0) {
                 _currentDay--;
-                records = dbHelper.getLogEntriesByDay(days.get(_currentDay));
+                this.records.clear();
+                this.records = dbHelper.getLogEntriesByDay(days.get(_currentDay));
             }
         }catch (SQLException e){
             e.getStackTrace();
@@ -90,7 +92,8 @@ public class SmokeLoggerDomain {
         try {
             if (_currentDay >= 0 && _currentDay < days.size() - 1) {
                 _currentDay++;
-                records = dbHelper.getLogEntriesByDay(days.get(_currentDay));
+                this.records.clear();
+                this.records = dbHelper.getLogEntriesByDay(days.get(_currentDay));
             }
         }catch (SQLException e){
             e.getStackTrace();
@@ -100,10 +103,12 @@ public class SmokeLoggerDomain {
     public void reset() {
         this._lastCounterValue = 0;
         try {
-            DayEntry newDay = dbHelper.ResetDay();
-            days.add(newDay);
+            dbHelper.ResetDay();
+            days.clear();
+            days = dbHelper.getDays();
             _currentDay = days.size() - 1;
-            records = dbHelper.getLogEntriesByDay(newDay);
+            records.clear();
+            records = dbHelper.getLogEntriesByDay(days.get(_currentDay));
         } catch (SQLException e) {
             logger.error("Error resetting: ", e);
         }
@@ -113,7 +118,7 @@ public class SmokeLoggerDomain {
         return this.records;
     }
     public List<DayEntry> getDays(){
-        return days;
+        return this.days;
     }
 
     public int getCurrentDay(){
